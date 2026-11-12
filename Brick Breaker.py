@@ -234,3 +234,173 @@ class Ball:
         return pygame.Rect(self.posx - self.radius, self.posy - self.radius, self.radius * 2, self.radius * 2)
 
 
+def collisionChecker(rect, obj_rect):
+    return rect.colliderect(obj_rect)
+
+
+def populateBlocks(blockWidth, blockHeight, horizontalGap, verticalGap):
+    listOfBlocks = []
+    num_rows = 5
+    start_y = 52
+
+    for row in range(num_rows):
+        j = start_y + row * (blockHeight + verticalGap)
+        for i in range(10, WIDTH - blockWidth + 5, blockWidth + horizontalGap):
+            # Angka acak di bawah 50 (kelipatan 10 dari 10 sampai 50)
+            initial_health = random.choice([10, 20, 30, 40, 50])
+            chosen_color = random.choice(PASTEL_COLORS)
+            listOfBlocks.append(Block(i, j, blockWidth, blockHeight, initial_health, chosen_color))
+    return listOfBlocks
+
+
+def gameOver(final_score):
+    sound_game_over()
+    while True:
+        screen.fill(BG_CREAM)
+
+        over_text = game_over_font.render("YAH KOK GAME OVER SIH", True, TEXT_DARK)
+        score_text = ui_font.render(f"Skor Akhir Kamu: {final_score}", True, TEXT_DARK)
+        restart_text = ui_font.render("Tekan Tombol Spasi di Keyboard untuk Main Lagi Ya", True, TEXT_DARK)
+
+        box_rect = pygame.Rect(WIDTH // 2 - 230, HEIGHT // 2 - 70, 460, 145)
+        pygame.draw.rect(screen, PINK_PASTEL, box_rect, border_radius=15)
+        pygame.draw.rect(screen, WHITE, box_rect, 3, border_radius=15)
+
+        screen.blit(over_text, over_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 35)))
+        screen.blit(score_text, score_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 5)))
+        screen.blit(restart_text, restart_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 40)))
+        pygame.display.update()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return False
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    return True
+
+
+def main():
+    running = True
+    lives = 5
+    score = 0
+    level = 1
+    base_speed = 3
+
+    striker = Striker(WIDTH // 2 - 50, HEIGHT - 50, 100, 15, 10, PINK_PASTEL)
+    strikerXFac = 0
+
+    balls = [Ball(WIDTH // 2, HEIGHT - 150, 7, base_speed, YELLOW_BALL)]
+    powerups = []
+
+    blockWidth, blockHeight = 22, 22
+    horizontalGap, verticalGap = 3, 3
+
+    listOfBlocks = populateBlocks(blockWidth, blockHeight, horizontalGap, verticalGap)
+
+    while running:
+        screen.fill(BG_CREAM)
+
+        # Header atas warna Pink Pastel
+        pygame.draw.rect(screen, PINK_PASTEL, (0, 0, WIDTH, 45))
+        pygame.draw.line(screen, WHITE, (0, 45), (WIDTH, 45), 2)
+        titleText = title_font.render("BRICK BREAKER - CANDY RUSH", True, TEXT_DARK)
+        screen.blit(titleText, titleText.get_rect(center=(WIDTH // 2, 22.5)))
+
+        # Panel Bawah warna Biru Pastel (Score, Lives, Level, Balls)
+        pygame.draw.rect(screen, BLUE_PASTEL, (0, HEIGHT - 35, WIDTH, 35))
+        pygame.draw.line(screen, WHITE, (0, HEIGHT - 35), (WIDTH, HEIGHT - 35), 2)
+        scoreText = ui_font.render(f"Score: {score}", True, TEXT_DARK)
+        livesText = ui_font.render(f"Lives: {lives}", True, TEXT_DARK)
+        ballsText = ui_font.render(f"Balls: {len(balls)}", True, TEXT_DARK)
+        levelText = ui_font.render(f"Level: {level}", True, TEXT_DARK)
+
+        screen.blit(scoreText, (20, HEIGHT - 25))
+        screen.blit(livesText, (170, HEIGHT - 25))
+        screen.blit(ballsText, (320, HEIGHT - 25))
+        screen.blit(levelText, (WIDTH - 95, HEIGHT - 25))
+
+        if not listOfBlocks:
+            sound_level_up()
+            level += 1
+            base_speed += 0.3
+            powerups.clear()
+            balls = [Ball(WIDTH // 2, HEIGHT - 150, 7, base_speed, YELLOW_BALL)]
+            listOfBlocks = populateBlocks(blockWidth, blockHeight, horizontalGap, verticalGap)
+
+        if lives <= 0:
+            running = gameOver(score)
+            if not running:
+                break
+            lives = 5
+            score = 0
+            level = 1
+            base_speed = 3
+            powerups.clear()
+            balls = [Ball(WIDTH // 2, HEIGHT - 150, 7, base_speed, YELLOW_BALL)]
+            listOfBlocks = populateBlocks(blockWidth, blockHeight, horizontalGap, verticalGap)
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_LEFT:
+                    strikerXFac = -1
+                if event.key == pygame.K_RIGHT:
+                    strikerXFac = 1
+            if event.type == pygame.KEYUP:
+                if event.key == pygame.K_LEFT or event.key == pygame.K_RIGHT:
+                    strikerXFac = 0
+
+        striker.update(strikerXFac)
+
+        for b in balls[:]:
+            ball_rect = b.getRect()
+            if collisionChecker(striker.getRect(), ball_rect):
+                b.hit_paddle()
+
+            for block in listOfBlocks[:]:
+                if collisionChecker(block.getRect(), ball_rect):
+                    b.hit_block()
+                    block.hit()
+                    if block.getHealth() <= 0:
+                        listOfBlocks.remove(block)
+                        score += 10
+                        if random.random() < 0.25:
+                            powerups.append(PowerUp(block.posx + block.width // 2, block.posy + block.height // 2))
+                    break
+
+            fell = b.update()
+            if fell:
+                balls.remove(b)
+
+        if len(balls) == 0:
+            sound_oops()
+            lives -= 1
+            if lives > 0:
+                balls.append(Ball(WIDTH // 2, HEIGHT - 150, 7, base_speed, YELLOW_BALL))
+
+        for p in powerups[:]:
+            p.update()
+            if collisionChecker(striker.getRect(), p.getRect()):
+                sound_powerup()
+                new_dir = random.choice([-1, 1])
+                balls.append(Ball(striker.posx + striker.width // 2, striker.posy - 15, 7, base_speed, YELLOW_BALL, xFac=new_dir, yFac=-1))
+                powerups.remove(p)
+            elif p.posy > HEIGHT:
+                powerups.remove(p)
+
+        striker.display()
+        for b in balls:
+            b.display()
+        for p in powerups:
+            p.display()
+        for block in listOfBlocks:
+            block.display()
+
+        pygame.display.update()
+        clock.tick(FPS)
+
+
+if __name__ == "__main__":
+    main()
+    pygame.quit()
