@@ -132,3 +132,53 @@ class Striker:
         return self.strikerRect
 
 
+# PowerUp Class (Item +1 Bola)
+class PowerUp:
+    def __init__(self, posx, posy):
+        self.posx = posx
+        self.posy = posy
+        self.radius = 12
+        self.speed = 2.5
+
+    def update(self):
+        self.posy += self.speed
+
+    def display(self):
+        pygame.draw.circle(screen, MINT_POWERUP, (int(self.posx), int(self.posy)), self.radius)
+        pygame.draw.circle(screen, WHITE, (int(self.posx), int(self.posy)), self.radius, 2)
+        txt = font.render("+1", True, TEXT_DARK)
+        screen.blit(txt, txt.get_rect(center=(int(self.posx), int(self.posy))))
+
+    def getRect(self):
+        return pygame.Rect(self.posx - self.radius, self.posy - self.radius, self.radius * 2, self.radius * 2)
+
+
+# Block / Kotak Angka Kecil dan Padat ala Grid
+class Block:
+    def __init__(self, posx, posy, width, height, health, color):
+        self.posx, self.posy = posx, posy
+        self.width, self.height = width, height
+        self.health = health
+        self.color = color
+        self.blockRect = pygame.Rect(self.posx, self.posy, self.width, self.height)
+
+    def display(self):
+        if self.health > 0:
+            pygame.draw.rect(screen, self.color, self.blockRect, border_radius=2)
+            pygame.draw.rect(screen, WHITE, self.blockRect, 1, border_radius=2)
+
+            txt = font.render(str(self.health), True, TEXT_DARK)
+            txt_rect = txt.get_rect(center=self.blockRect.center)
+            screen.blit(txt, txt_rect)
+
+    def hit(self):
+        self.health -= 10
+        self.color = random.choice(PASTEL_COLORS)
+
+    def getRect(self):
+        return self.blockRect
+
+    def getHealth(self):
+        return self.health
+
+
