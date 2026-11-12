@@ -182,3 +182,55 @@ class Block:
         return self.health
 
 
+# Ball Class dengan Efek Jejak Pastel Smooth
+class Ball:
+    def __init__(self, posx, posy, radius, speed, color, xFac=1, yFac=-1):
+        self.posx, self.posy = posx, posy
+        self.radius = radius
+        self.speed = speed
+        self.color = color
+        self.xFac, self.yFac = xFac, yFac
+        self.trail = []
+
+    def display(self):
+        for idx, pt in enumerate(self.trail):
+            fraction = (idx + 1) / len(self.trail) if self.trail else 1
+            trail_radius = max(1, int(self.radius * fraction * 0.8))
+            pygame.draw.circle(screen, PINK_PASTEL, (int(pt[0]), int(pt[1])), trail_radius)
+
+        pygame.draw.circle(screen, self.color, (int(self.posx), int(self.posy)), self.radius)
+        pygame.draw.circle(screen, TEXT_DARK, (int(self.posx), int(self.posy)), self.radius, 1)
+
+    def update(self):
+        self.trail.append((self.posx, self.posy))
+        if len(self.trail) > 12:
+            self.trail.pop(0)
+
+        self.posx += self.xFac * self.speed
+        self.posy += self.yFac * self.speed
+
+        if self.posx <= self.radius or self.posx >= WIDTH - self.radius:
+            self.xFac *= -1
+            sound_wall()
+
+        if self.posy <= self.radius + 45:
+            self.yFac *= -1
+            sound_wall()
+
+        if self.posy >= HEIGHT:
+            return True
+
+        return False
+
+    def hit_paddle(self):
+        self.yFac = -abs(self.yFac)
+        sound_boing()
+
+    def hit_block(self):
+        self.yFac *= -1
+        sound_pop()
+
+    def getRect(self):
+        return pygame.Rect(self.posx - self.radius, self.posy - self.radius, self.radius * 2, self.radius * 2)
+
+
